@@ -2,26 +2,23 @@
 #'
 #' The `compose_email()` function allows us to easily create an email message.
 #' We can use `glue`'s string interpolation semantics to incorporate external
-#' objects or evaluate R code within the message body, the footer, and the
-#' preheader text (using curly braces to enclose such R expressions). Local
-#' variables can be specified in the function call (using named arguments with
-#' `...`) and any variables not found in `...` will be searched for in the
-#' global environment.
-#' @param body The main body of text for the email message. Markdown can be used
-#'   here (along with string interpolation via curly braces and named arguments)
-#'   to construct the main text. Alternatively, we can supply a set of
-#'   `block_*()` calls enclosed within the `blocks()` function to take advantage
-#'   of precomposed HTML blocks.
-#' @param header,footer The header and footer text for the email message, As
-#'   with the `body`, Markdown and string interpolation can be used here.
-#' @param .preheader_text The text that appears before the subject in some email
-#'   clients. This must be plaintext.
+#' objects or evaluate R code within the message body, the header, or the footer
+#' (using curly braces to enclose such R expressions). Local variables can be
+#' specified in the function call (using named arguments with `...`) and any
+#' variables not found in `...` will be searched for in the global environment.
+#'
+#' @param header,body,footer The three layout sections for an email message
+#'   (ordered from top to bottom). Markdown text can be supplied to each of
+#'   these. String interpolation is enabled via curly braces and named arguments
+#'   in `...`. Alternatively, we can supply a set of `block_*()` calls enclosed
+#'   within the [blocks()] function to take advantage of precomposed HTML
+#'   blocks.
 #' @param .title The title of the email message. This is not the subject but the
 #'   HTML title text which may appear in limited circumstances.
 #' @param .envir An opportunity to specify the environment. By default, this is
-#'   the `parent.frame()`.
-#' @param ... Expression strings for string interpolation for the `body`,
-#'   `footer`, and `preheader_text` string data.
+#'   the [parent.frame()].
+#' @param ... Expression strings for string interpolation within the `header`,
+#'   `body`, and `footer`.
 #' @return An `email_message` object.
 #' @examples
 #' # Create a simple email message using
@@ -67,39 +64,29 @@
 #' {sender_name}",
 #'   thing = "report"
 #'   )
-#' @importFrom glue glue
-#' @importFrom commonmark markdown_html
-#' @importFrom stringr str_replace str_replace_all str_detect
-#' @importFrom stringr str_extract str_extract_all
-#' @importFrom htmltools HTML
 #' @export
 compose_email <- function(body = NULL,
                           header = NULL,
                           footer = NULL,
-                          .preheader_text = NULL,
                           .title = NULL,
                           .envir = parent.frame(),
                           ...) {
 
-  if (!is.null(.preheader_text)) {
-    preheader_text <-
-      glue::glue(.preheader_text, ..., .envir = .envir)
-  } else {
-    preheader_text <- ""
-  }
-
-  if (!is.null(.preheader_text)) {
+  # Define the title text for the email; use an
+  # empty string if not supplied
+  if (!is.null(.title)) {
     title_text <-
       glue::glue(.title, ..., .envir = .envir)
   } else {
     title_text <- ""
   }
 
-
+  # Define the email body section
   if (!is.null(body)) {
 
     if (inherits(body, "blocks")) {
 
+      body <- render_blocks(blocks = body, context = "body")
       html_body_text <- paste(unlist(body), collapse = "\n")
 
     } else {
@@ -114,7 +101,7 @@ compose_email <- function(body = NULL,
 
       html_body_text <-
         glue::glue(
-          simple_html_block(),
+          simple_body_block(),
           html_paragraphs = html_body_text
         )
     }
@@ -123,18 +110,12 @@ compose_email <- function(body = NULL,
     html_body_text <- ""
   }
 
-  if (!is.null(header)) {
-    header <-
-      glue::glue(header, ..., .envir = .envir)
-  } else {
-    header <- ""
-  }
-
-
+  # Define the email footer section
   if (!is.null(footer)) {
 
     if (inherits(footer, "blocks")) {
 
+      footer <- render_blocks(blocks = footer, context = "footer")
       html_footer <- paste(unlist(footer), collapse = "\n")
 
     } else {
@@ -148,24 +129,48 @@ compose_email <- function(body = NULL,
         tidy_gsub("\n", "")
 
       html_footer <-
-        glue::glue(
-          simple_html_block(),
-          html_paragraphs = html_footer
-        )
+        render_blocks(
+          blocks =
+            blocks(
+              block_text(html_footer)),
+          context = "footer"
+        )[[1]]
     }
 
   } else {
     html_footer <- ""
   }
 
+  # Define the email header section
+  if (!is.null(header)) {
 
-  html_preheader_text <-
-    tidy_gsub(
-      commonmark::markdown_html(preheader_text), "\n", "")
+    if (inherits(header, "blocks")) {
 
-  html_header <-
-    tidy_gsub(
-      commonmark::markdown_html(header), "\n", "")
+      header <- render_blocks(blocks = header, context = "header")
+      html_header <- paste(unlist(header), collapse = "\n")
+
+    } else {
+
+      header <-
+        glue::glue(header, ..., .envir = .envir)
+
+      html_header <-
+        header %>%
+        commonmark::markdown_html() %>%
+        tidy_gsub("\n", "")
+
+      html_header <-
+        render_blocks(
+          blocks =
+            blocks(
+              block_text(html_header)),
+          context = "header"
+        )[[1]]
+    }
+
+  } else {
+    html_header <- ""
+  }
 
   # Generate the email message body
   body <- glue::glue(bls_standard_template())
@@ -234,28 +239,27 @@ compose_email <- function(body = NULL,
     }
   }
 
-  # Apply the `email_message` class
-  attr(email_message, "class") <- "email_message"
+  # Apply the `email_message` and `blastula_message` classes
+  attr(email_message, "class") <- c("blastula_message", "email_message")
 
   email_message
 }
 
-#' Template for a simple block of HTML
+#' Template for a simple block of HTML in the body
 #' @noRd
-simple_html_block <- function() {
+simple_body_block <- function() {
 
-"                <tr>
-                  <td class=\"wrapper\" style=\"font-family: sans-serif; font-size: 14px; vertical-align: top; box-sizing: border-box; padding: 20px;\">
-                    <table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" style=\"border-collapse: separate; mso-table-lspace: 0pt; mso-table-rspace: 0pt; width: 100%;\">
-                      <tbody>
-                        <tr>
-                          <td style=\"font-family: Helvetica, sans-serif; font-size: 14px; vertical-align: top;\">
-                            <p style=\"font-family: Helvetica, sans-serif; font-size: 14px; font-weight: normal; margin: 0; margin-bottom: 16px;\">{html_paragraphs}</p>
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </td>
-                </tr>
-                "
+"<tr>
+<td class=\"wrapper\" style=\"font-family: sans-serif; font-size: 14px; vertical-align: top; box-sizing: border-box; padding: 20px;\">
+<table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" style=\"border-collapse: separate; mso-table-lspace: 0pt; mso-table-rspace: 0pt; width: 100%;\">
+<tbody>
+<tr>
+<td style=\"font-family: Helvetica, sans-serif; font-size: 14px; vertical-align: top;\">
+<p style=\"font-family: Helvetica, sans-serif; font-size: 14px; font-weight: normal; margin: 0; margin-bottom: 16px;\">{html_paragraphs}</p>
+</td>
+</tr>
+</tbody>
+</table>
+</td>
+</tr>"
 }

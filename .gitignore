@@ -7,8 +7,8 @@
 
 # Output files from blastula
 .bls*
+blastula-*
 .mailsend
-*creds*
 
 # Docs folder from `pkgdown::build_site()`
 docs/

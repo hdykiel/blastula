@@ -5,6 +5,14 @@ sudo: false
 cache: packages
 warnings_are_errors: false
 
+addons:
+  apt:
+    sources:
+      - sourceline: 'ppa:chris-lea/libsodium'
+    packages:
+      - libsecret-1-dev
+      - libsodium-dev
+
 notifications:
   email:
     on_success: change
@@ -29,14 +37,14 @@ jobs:
       name: pkgdown
       r: release
       if: branch IN (master)
-      r_binary_packages:
-        - pkgdown
       script:
-        - Rscript -e "devtools::install()"
-        - Rscript -e "pkgdown::build_site()"
-        - Rscript -e "remove.packages(devtools::as.package('.')$package)"
+      - Rscript -e "remotes::install_cran(c('pkgdown', 'devtools'))"
+      - Rscript -e "devtools::install()"
+      - Rscript -e "Sys.setenv(FULLNAME = 'Richard Iannone'); pkgdown::build_site()"
+      - Rscript -e "remove.packages(devtools::as.package('.')$package)"
       deploy:
         provider: pages
+        script: Rscript -e 'devtools::install()'
         local-dir: docs
         skip-cleanup: true
         keep-history: false

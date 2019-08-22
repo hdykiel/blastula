@@ -31,9 +31,7 @@
 #'   provider = "gmail"
 #'   )
 #' }
-#' @importFrom stringr str_replace_all
-#' @importFrom dplyr pull filter
-#' @export
+#' @noRd
 create_email_creds_file <- function(user,
                                     password,
                                     provider = NULL,

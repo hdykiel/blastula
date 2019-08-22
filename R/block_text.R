@@ -3,8 +3,9 @@
 #' With `block_text()` we can define a text area and this can be easily combined
 #' with other `block_*()` functions. The text will take the entire width of the
 #' block and will resize according to screen width. Like all `block_*()`
-#' functions, `block_text()` must be placed inside of `blocks()` and that object
-#' can be provided to the `body` or `footer` argument of `compose_email()`.
+#' functions, `block_text()` must be placed inside of `blocks()` and the
+#' resultant `blocks` object can be provided to the `body`, `header`, or
+#' `footer` arguments of `compose_email()`.
 #'
 #' @param ... Paragraphs of text.
 #' @examples
@@ -41,17 +42,41 @@
 #'       )
 #'     )
 #'   )
-#' @importFrom commonmark markdown_html
-#' @importFrom glue glue
 #' @export
 block_text <- function(...) {
 
   x <- list(...)
 
+  class(x) <- "block_text"
+
+  x
+}
+
+#' @noRd
+render_block_text <- function(x, context = "body") {
+
+  if (context == "body") {
+    font_size <- 14
+    font_color <- "#000000"
+    margin_bottom <- 12
+    padding <- 12
+  } else if (context %in% c("header", "footer")) {
+    font_size <- 12
+    font_color <- "#999999"
+    margin_bottom <- 12
+    padding <- 10
+  }
+
+  paragraph <-
+    glue::glue(
+      "<p class=\"align-center\" style=\"font-family: Helvetica, sans-serif; color: {font_color};font-size: {font_size}px; font-weight: normal; margin: 0; margin-bottom: {margin_bottom}px; text-align: center;\">"
+    ) %>%
+    as.character()
+
   text <-
     paste(x %>% unlist(), collapse = "\n") %>%
     commonmark::markdown_html() %>%
-    tidy_gsub("<p>", "<p class=\"align-center\" style=\"font-family: Helvetica, sans-serif; font-size: 14px; font-weight: normal; margin: 0; margin-bottom: 16px; text-align: center;\">")
+    tidy_gsub("<p>", paragraph)
 
   glue::glue(text_block_template()) %>% as.character()
 }
@@ -60,17 +85,35 @@ block_text <- function(...) {
 #' @noRd
 text_block_template <- function() {
 
-"              <tr>
-                <td class=\"wrapper\" style=\"font-family: Helvetica, sans-serif; font-size: 14px; vertical-align: top; box-sizing: border-box; padding: 24px;\" valign=\"top\">
-                  <table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" style=\"border-collapse: separate; mso-table-lspace: 0pt; mso-table-rspace: 0pt; width: 100%;\" width=\"100%\">
-                    <tbody>
-                      <tr>
-                        <td style=\"font-family: Helvetica, sans-serif; font-size: 14px; vertical-align: top;\" valign=\"top\">
-                          {text}
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </td>
-              </tr>"
+"<tr>
+<td class=\"wrapper\" style=\"font-family: Helvetica, sans-serif; font-size: {font_size}px; vertical-align: top; box-sizing: border-box; padding: {padding}px;\" valign=\"top\">
+<table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" style=\"border-collapse: separate; mso-table-lspace: 0pt; mso-table-rspace: 0pt; width: 100%;\" width=\"100%\">
+<tbody>
+<tr>
+<td style=\"font-family: Helvetica, sans-serif; font-size: {font_size}px; vertical-align: top;\" valign=\"top\">
+{text}
+</td>
+</tr>
+</tbody>
+</table>
+</td>
+</tr>"
 }
+
+# nocov start
+
+#' Print a text block
+#'
+#' This facilitates printing of the text block to the Viewer.
+#' @param x an object of class \code{block_text}.
+#' @keywords internal
+#' @export
+print.block_text <- function(x, ...) {
+
+  x %>%
+    render_block_text(context = "body") %>%
+    htmltools::HTML() %>%
+    htmltools::html_print()
+}
+
+# nocov end

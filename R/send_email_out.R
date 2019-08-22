@@ -47,9 +47,6 @@
 #' @param debug A logical value to indicate whether the mail sending statement
 #'   should be printed to the console. No emails are sent when debug is set to
 #'   `TRUE`.
-#' @importFrom glue glue
-#' @importFrom dplyr tibble bind_cols pull
-#' @importFrom tidyr unite
 #' @export
 send_email_out <- function(message,
                            from,
@@ -234,7 +231,7 @@ send_email_out <- function(message,
   # Send the message
   command <-
     glue::glue(
-"{paste0(getwd(), \"/mailsend\")} \\
+"{shQuote(paste0(getwd(), \"/mailsend\"))} \\
 -from \"{from}\" \\
 -name \"{sender}\" \\
 -t \"{to}\" \\

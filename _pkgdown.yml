@@ -1,3 +1,5 @@
+url: https://rich-iannone.github.io/blastula
+
 home:
   strip_header: true
 
@@ -32,8 +34,10 @@ reference:
       the blocks. With these responsive, higher-level components, we can create
       sophisticated email messages with minimal effort.
     contents:
+    - blocks
     - block_title
     - block_text
+    - block_spacer
     - block_articles
     - block_social_links
     - article
@@ -50,3 +54,20 @@ reference:
     - send_by_mailgun
     - get_html_str
     - create_email_creds_file
+
+navbar:
+  type: default
+  left:
+  - text: Reference
+    href: reference/index.html
+  - text: Articles
+    menu:
+    - text: Simple Email Composition
+      href: articles/simple_composition.html
+    - text: Sending Email Using SMTP
+      href: articles/sending_using_smtp.html
+  - text: News
+    href: news/index.html
+  right:
+  - icon: fa-github fa-lg
+    href: https://github.com/rich-iannone/blastula

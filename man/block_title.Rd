@@ -4,18 +4,18 @@
 \alias{block_title}
 \title{A block with large title text}
 \usage{
-block_title(title)
+block_title(...)
 }
 \arguments{
-\item{title}{A single of paragraph of text.}
+\item{...}{Paragraphs of title text.}
 }
 \description{
-With \code{block_text()} we can define a title text area and this can be easily
+With \code{block_title()} we can define a title text area and this can be easily
 combined with other \code{block_*()} functions. The title will take the entire
 width of the block and will resize according to screen width. Like all
 \code{block_*()} functions, \code{block_title()} must be placed inside of \code{blocks()}
-and that object can be provided to the \code{body} or \code{footer} argument of
-\code{compose_email()}.
+and the resultant \code{blocks} object can be provided to the \code{body}, \code{header}, or
+\code{footer} arguments of \code{compose_email()}.
 }
 \examples{
 # Create a block of two, side-by-side
